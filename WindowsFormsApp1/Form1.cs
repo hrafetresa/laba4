@@ -12,10 +12,10 @@ namespace WindowsFormsApp1
 {
     public partial class Form1 : Form
     {
-        public float cx = 100, cy = 100; 
-        public float vx = 5, vy = 0;     
-        public float currentRadius = 40; 
-        public bool isMovingForward = true; 
+        public float cx = 100, cy = 100;
+        public float vx = 5, vy = 0;
+        public float currentRadius = 40;
+        public bool isMovingForward = true;
 
         public Color color1 = Color.Red;
         public Color color2 = Color.Blue;
@@ -26,7 +26,7 @@ namespace WindowsFormsApp1
         public int weight = 5;
 
         List<PointF> trail = new List<PointF>();
-        int distortionTimer = 0; 
+        int distortionTimer = 0;
 
         List<Rectangle> obstacles = new List<Rectangle>();
 
@@ -40,13 +40,21 @@ namespace WindowsFormsApp1
 
         private void btnSettings_Click(object sender, EventArgs e)
         {
-            Form2 f2 = new Form2(this);
-            f2.Show(); 
+            Form2 existingForm = Application.OpenForms.OfType<Form2>().FirstOrDefault();
+            if (existingForm == null)
+            {
+                Form2 f2 = new Form2(this);
+                f2.Show();
+            }
+            else
+            {
+                existingForm.Activate();
+            }
         }
 
         private void timer1_Tick(object sender, EventArgs e)
         {
-            if (!isDragging) 
+            if (!isDragging)
             {
                 trail.Add(new PointF(cx, cy));
                 if (trail.Count > 5) trail.RemoveAt(0);
@@ -87,7 +95,9 @@ namespace WindowsFormsApp1
                     if (currentRadius <= minRadius)
                     {
                         timer1.Stop();
-                        MessageBox.Show("Круг стерся! Радиус достиг минимума.");
+                        MessageBox.Show("Радиус достиг минимума!");
+                        btnStartStop.Text = "Старт";
+
                     }
                 }
 
@@ -101,13 +111,13 @@ namespace WindowsFormsApp1
 
             foreach (var obs in obstacles)
             {
-                e.Graphics.FillRectangle(Brushes.Gray, obs);
+                e.Graphics.FillRectangle(Brushes.LightBlue, obs);
                 e.Graphics.DrawRectangle(Pens.Black, obs);
             }
 
             for (int i = 0; i < trail.Count; i++)
             {
-                int alpha = (i * 255) / trail.Count; 
+                int alpha = (i * 255) / trail.Count;
                 Color blurColor = Color.FromArgb(alpha, isMovingForward ? color1 : color2);
                 using (SolidBrush blurBrush = new SolidBrush(blurColor))
                 {
@@ -124,9 +134,23 @@ namespace WindowsFormsApp1
 
                 if (distortionTimer > 0)
                 {
-                    drawRadiusX = currentRadius * 1.2f;
-                    drawRadiusY = currentRadius * 0.8f;
+                    if (Math.Abs(vx) > Math.Abs(vy))
+                    {
+                        drawRadiusX = currentRadius * 0.8f;
+                        drawRadiusY = currentRadius * 1.2f;
+                    }
+                    else 
+                    {
+                        drawRadiusX = currentRadius * 1.2f;
+                        drawRadiusY = currentRadius * 0.8f;
+                    }
                 }
+                else
+                {
+                    drawRadiusX = currentRadius;
+                    drawRadiusY = currentRadius;
+                }
+
 
                 e.Graphics.FillEllipse(mainBrush, cx - drawRadiusX, cy - drawRadiusY, drawRadiusX * 2, drawRadiusY * 2);
                 e.Graphics.DrawEllipse(borderPen, cx - drawRadiusX, cy - drawRadiusY, drawRadiusX * 2, drawRadiusY * 2);
@@ -144,7 +168,7 @@ namespace WindowsFormsApp1
                     isDragging = true;
                     mouseOffsetX = cx - e.X;
                     mouseOffsetY = cy - e.Y;
-                    trail.Clear(); 
+                    trail.Clear();
                 }
             }
             else if (e.Button == MouseButtons.Right)
@@ -166,7 +190,8 @@ namespace WindowsFormsApp1
 
         private void Form1_MouseUp(object sender, MouseEventArgs e)
         {
-            if (e.Button == MouseButtons.Left)
+            Form activeForm = Form.ActiveForm;
+            if (e.Button == MouseButtons.Middle)
             {
                 if (!isDragging)
                 {
@@ -179,9 +204,20 @@ namespace WindowsFormsApp1
         }
 
         float mouseOffsetX, mouseOffsetY;
+
         public Form1()
         {
             InitializeComponent();
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.Escape)
+            {
+                this.Close();
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
         }
     }
 }
