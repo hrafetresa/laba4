@@ -1,11 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace WindowsFormsApp1
@@ -17,6 +13,9 @@ namespace WindowsFormsApp1
         public float currentRadius = 40;
         public bool isMovingForward = true;
 
+        public int directionIndex = 0; 
+        public float movementAngle = 45; 
+
         public Color color1 = Color.Red;
         public Color color2 = Color.Blue;
         public Color colorBorder = Color.Black;
@@ -27,13 +26,25 @@ namespace WindowsFormsApp1
 
         List<PointF> trail = new List<PointF>();
         int distortionTimer = 0;
-
         List<Rectangle> obstacles = new List<Rectangle>();
-
         bool isDragging = false;
+        float mouseOffsetX, mouseOffsetY;
+
+        public Form1()
+        {
+            InitializeComponent();
+        }
 
         private void btnStartStop_Click(object sender, EventArgs e)
         {
+            if (!timer1.Enabled)
+            {
+                if (currentRadius <= minRadius)
+                {
+                    currentRadius = startRadius; 
+                    trail.Clear();               
+                }
+            }
             timer1.Enabled = !timer1.Enabled;
             btnStartStop.Text = timer1.Enabled ? "Стоп" : "Старт";
         }
@@ -74,10 +85,20 @@ namespace WindowsFormsApp1
                 {
                     if (obs.IntersectsWith(Rectangle.Round(circleRect)))
                     {
-                        vx = -vx;
-                        vy = -vy;
-                        cx += vx * 2;
-                        cy += vy * 2;
+                        float overlapX = Math.Min(cx + currentRadius, obs.Right) - Math.Max(cx - currentRadius, obs.Left);
+                        float overlapY = Math.Min(cy + currentRadius, obs.Bottom) - Math.Max(cy - currentRadius, obs.Top);
+
+                        if (overlapX < overlapY)
+                        {
+                            vx = -vx;
+                            cx += (cx < obs.Left + obs.Width / 2f) ? -overlapX : overlapX;
+                        }
+                        else
+                        {
+                            vy = -vy;
+                            cy += (cy < obs.Top + obs.Height / 2f) ? -overlapY : overlapY;
+                        }
+
                         bounced = true;
                         break;
                     }
@@ -86,7 +107,6 @@ namespace WindowsFormsApp1
                 if (bounced)
                 {
                     isMovingForward = !isMovingForward;
-
                     distortionTimer = 10;
 
                     float reduction = (11 - weight) * 0.5f;
@@ -97,7 +117,6 @@ namespace WindowsFormsApp1
                         timer1.Stop();
                         MessageBox.Show("Радиус достиг минимума!");
                         btnStartStop.Text = "Старт";
-
                     }
                 }
 
@@ -108,7 +127,6 @@ namespace WindowsFormsApp1
 
         private void Form1_Paint(object sender, PaintEventArgs e)
         {
-
             foreach (var obs in obstacles)
             {
                 e.Graphics.FillRectangle(Brushes.LightBlue, obs);
@@ -117,7 +135,7 @@ namespace WindowsFormsApp1
 
             for (int i = 0; i < trail.Count; i++)
             {
-                int alpha = (i * 255) / trail.Count;
+                int alpha = (i * 150) / trail.Count; 
                 Color blurColor = Color.FromArgb(alpha, isMovingForward ? color1 : color2);
                 using (SolidBrush blurBrush = new SolidBrush(blurColor))
                 {
@@ -132,25 +150,19 @@ namespace WindowsFormsApp1
                 float drawRadiusX = currentRadius;
                 float drawRadiusY = currentRadius;
 
-                if (distortionTimer > 0)
+                if (distortionTimer > 0) 
                 {
                     if (Math.Abs(vx) > Math.Abs(vy))
                     {
                         drawRadiusX = currentRadius * 0.8f;
                         drawRadiusY = currentRadius * 1.2f;
                     }
-                    else 
+                    else
                     {
                         drawRadiusX = currentRadius * 1.2f;
                         drawRadiusY = currentRadius * 0.8f;
                     }
                 }
-                else
-                {
-                    drawRadiusX = currentRadius;
-                    drawRadiusY = currentRadius;
-                }
-
 
                 e.Graphics.FillEllipse(mainBrush, cx - drawRadiusX, cy - drawRadiusY, drawRadiusX * 2, drawRadiusY * 2);
                 e.Graphics.DrawEllipse(borderPen, cx - drawRadiusX, cy - drawRadiusY, drawRadiusX * 2, drawRadiusY * 2);
@@ -170,6 +182,12 @@ namespace WindowsFormsApp1
                     mouseOffsetY = cy - e.Y;
                     trail.Clear();
                 }
+                else
+                {
+                    vx = -vx;
+                    vy = -vy;
+                    isMovingForward = !isMovingForward;
+                }
             }
             else if (e.Button == MouseButtons.Right)
             {
@@ -182,32 +200,26 @@ namespace WindowsFormsApp1
         {
             if (isDragging)
             {
-                cx = e.X + mouseOffsetX;
-                cy = e.Y + mouseOffsetY;
+                float targetX = e.X + mouseOffsetX;
+                float targetY = e.Y + mouseOffsetY;
+
+                if (targetX - currentRadius < 0) targetX = currentRadius;
+                if (targetX + currentRadius > this.ClientSize.Width) targetX = this.ClientSize.Width - currentRadius;
+                if (targetY - currentRadius < 0) targetY = currentRadius;
+                if (targetY + currentRadius > this.ClientSize.Height) targetY = this.ClientSize.Height - currentRadius;
+
+                cx = targetX;
+                cy = targetY;
                 this.Invalidate();
             }
         }
 
         private void Form1_MouseUp(object sender, MouseEventArgs e)
         {
-            Form activeForm = Form.ActiveForm;
-            if (e.Button == MouseButtons.Middle)
+            if (e.Button == MouseButtons.Left)
             {
-                if (!isDragging)
-                {
-                    vx = -vx;
-                    vy = -vy;
-                    isMovingForward = !isMovingForward;
-                }
                 isDragging = false;
             }
-        }
-
-        float mouseOffsetX, mouseOffsetY;
-
-        public Form1()
-        {
-            InitializeComponent();
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
