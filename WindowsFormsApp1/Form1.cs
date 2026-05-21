@@ -26,6 +26,7 @@ namespace WindowsFormsApp1
 
         List<PointF> trail = new List<PointF>();
         int distortionTimer = 0;
+        bool hitVerticalWall = false;
         List<Rectangle> obstacles = new List<Rectangle>();
         bool isDragging = false;
         float mouseOffsetX, mouseOffsetY;
@@ -75,10 +76,10 @@ namespace WindowsFormsApp1
 
                 bool bounced = false;
 
-                if (cx - currentRadius <= 0) { cx = currentRadius; vx = -vx; bounced = true; }
-                if (cx + currentRadius >= this.ClientSize.Width) { cx = this.ClientSize.Width - currentRadius; vx = -vx; bounced = true; }
-                if (cy - currentRadius <= 0) { cy = currentRadius; vy = -vy; bounced = true; }
-                if (cy + currentRadius >= this.ClientSize.Height) { cy = this.ClientSize.Height - currentRadius; vy = -vy; bounced = true; }
+                if (cx - currentRadius <= 0) { cx = currentRadius; vx = -vx; bounced = true; hitVerticalWall = true; }
+                if (cx + currentRadius >= this.ClientSize.Width) { cx = this.ClientSize.Width - currentRadius; vx = -vx; bounced = true; hitVerticalWall = true; }
+                if (cy - currentRadius <= 0) { cy = currentRadius; vy = -vy; bounced = true; hitVerticalWall = false; }
+                if (cy + currentRadius >= this.ClientSize.Height) { cy = this.ClientSize.Height - currentRadius; vy = -vy; bounced = true; hitVerticalWall = false; }
 
                 RectangleF circleRect = new RectangleF(cx - currentRadius, cy - currentRadius, currentRadius * 2, currentRadius * 2);
                 foreach (var obs in obstacles)
@@ -152,7 +153,7 @@ namespace WindowsFormsApp1
 
                 if (distortionTimer > 0) 
                 {
-                    if (Math.Abs(vx) > Math.Abs(vy))
+                    if (hitVerticalWall)
                     {
                         drawRadiusX = currentRadius * 0.8f;
                         drawRadiusY = currentRadius * 1.2f;
